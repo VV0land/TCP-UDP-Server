@@ -1,35 +1,62 @@
-млять не понимаю!
-у меня весь проект в V@WIN-L5OCF5BA63G MINGW64 /a/NJ/2025/НДМ Системы/Server
-который я вчера залил на сервер, сегодня (НЕ выходя из этой папки) я забрал с сервера:
-git clone https://github.com/VV0land/TCP-UDP-Server.git
-да, получилась гребанная матрешка в A:\NJ\2025\НДМ Системы\Server , в котором есть A:\NJ\2025\НДМ Системы\Server\.git со вчерашнего дня, теперь ещё внутренний проект
-A:\NJ\2025\НДМ Системы\Server\TCP-UDP-Server , в котором тоже есть A:\NJ\2025\НДМ Системы\Server\TCP-UDP-Server\.git
-что я не так сделал????
-я не сейчас работаю(сделал правки) в A:\NJ\2025\НДМ Системы\Server\TCP-UDP-Server, какой .git мне удалить???
+			Шпаргалка по ГИТ и работа с ним.		https://github.com/VV0land?tab=repositories
 
+0.	Создаю репозиторий с 0-я.
+	0. Полное удаление локального репозитория			(rm -rf /a/NJ/2025/НДМ Системы/Server)
 
-
-git clone https://github.com/VV0land/TCP-UDP-Server.git
-
-rm -rf "A:/NJ/2025/НДМ Системы/Server/TCP-UDP-Server/.git"
-
-git rm --cached TCP-UDP-Server
-
-git add TCP-UDP-Server/
-
-git commit -m "Интегрировал TCP-UDP-Server в основной проект"
-
-
-git status
-
-git push origin master
-
-git push -u origin master		Флаг -u (--set-upstream) связывает вашу локальную ветку с удалённой. В дальнейшем можно просто писать git push.
-
-
-------
-на след. день
-git pull origin master
-
-
-
+	1.	Создание нового репозитория на GitHub:
+			Зайдите на  и авторизуйтесь.
+			Нажмите «+» в верхнем правом углу > «New repository».
+			Repository name: TCP-UDP-Server (как у вас).
+			Description: (по желанию).
+			Public (если проект открытый).
+			Снимите галочку с «Initialize this repository with:» (не нужно README/LICENSE).
+			Нажмите «Create repository».
+		
+	2.	Подготовка локальной папки:
+			mkdir -p /a/NJ/2025/НДМ Системы/Server
+			cd /a/NJ/2 Newton/2025/НДМ Системы/Server
+			Перенос/копирование в неё нужных файлов.	cp /путь/к/сохранённым/файлам/* .
+			
+	3.	Инициализация Git и связь с GitHub:
+			git init
+			git add .
+			git commit -m "Initial commit: базовые файлы проекта"
+			git remote add origin https://github.com/VV0land/TCP-UDP-Server.git
+			git push --force -u origin master			-u — связывает ветку master локально и удалённо (нужно один раз),
+														--force — стирает все предыдущие коммиты на сервере и заменяет их вашими.
+			
+1.	Клонирую себе с сервера на НОВОЕ локальное место.
+	1.	Создание новой локальной директории:
+			mkdir /c/Git
+			cd /c/Git
+			pwd
+			git clone https://github.com/VV0land/TCP-UDP-Server.git
+			cd TCP-UDP-Server
+			ls -la
+			
+	2.	Выгрузка на GitHub после изменений:
+			git add .
+			git status
+			?	git reset HEAD x64/Release/				Убрать из индекса ненужные файлы
+				
+			git rm -r --cached x64/						Убериать папки из индекса (но оставьте на диске)	-r — рекурсивно -cached — удалить только из индекса Git, не трогая реальные файлы на диске.
+			и/или добавить x64/ в	.gitignore 
+			
+			git status
+			git commit -m "переделка того-то"			!!! Если коммит не идет(особенно в ПЕРВЫЙ РАЗ), то	git config --global user.email "you@example.com" и git config --global user.name "Your Name"
+			
+			git log --oneline							Должен появиться новый коммит с сообщением.
+			git push / git push origin master
+			git status
+			
+2.	Клонирую себе с сервера на СУЩЕСТВУЮЩЕЕ локальное место.
+	1.	Убедись, что в нужной папке:
+			cd /a/NJ/2025/НДМ\ Системы/Server
+			pwd
+			
+	2.	Проверьте связь с удалённым репозиторием
+			git remote -v
+			
+	3.	Пуляю
+			git pull origin master origin — имя удалённого репозитория;	master — ветка, которую нужно обновить
+			git status

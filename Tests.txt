@@ -1,0 +1,53 @@
+﻿UDP server started on port 8081
+TCP server started on port 8080
+UDP/TCP Server running. Waiting for connections...
+New TCP connection from 127.0.0.1:56450
+Received full line from TCP client (216): qqw
+Received full line from TCP client (216): /time
+Received full line from TCP client (216): /stats
+Received full line from TCP client (216): ♥♥♥♥∟∟∟
+Received full line from TCP client (216): ww
+Received full line from TCP client (216): 1
+TCP client (216) disconnected.
+New TCP connection from 127.0.0.1:56522
+Received from UDP client 127.0.0.1:51847: 1212
+New TCP connection from 127.0.0.1:56598
+Received from UDP client 127.0.0.1:51847: 212222
+Received full line from TCP client (216): ▬♥☺☺♠№♥♥WщЦ╝ЭN↕║тO*ШЫ(+м$∟чu♦Є√#Ф3█%_ч♥╕ ni4┼<Фс▓↓їЄ╩{о/▐╜☼Ї▬ннKм♣Т║СО╛9 ║║‼☺‼☻‼♥└+└/└,└0╠й╠и└‼└¶ЬЭ/5☺♠У··♣♣☺
+Received full line from TCP client (216): ♀
+☺→☺☺╛ Й'c╚░пL%XСIM▄-╤ЕЬХ~R┬ZСsient (216): ЪЪ◄ь↔↨↑■
+send() failed with error: 10053
+recv() failed with error: 10053
+Received from UDP client 127.0.0.1:59235: 12
+♀Lг┌ЇЙщs full line from TCP client (232): ▬♥☺♠а☺♠Ь♥♥ъ
+Received full line from TCP client (232): J╣ЖН·х♂TчC╘жOЗ=dяyУ ·<?Ч♫Ги♫▲>■╖#р♥╥ЯЦ▄▐▲з+И♀↑ив<╪┐╕ **‼☺‼☻‼♥└+└/└,└0╠й╠и└‼└¶ЬЭ/5☺♠3→→
+Received full line from TCP client (232): ♀
+send() failed with error: 10053
+↕►♦♦♦☺♣♣♣♠♠☺3♦я♦эъъ☺◄ь♦└Xz4+$H╖▬▓┘EY¤j▬→1ЫЖgf┐)MИ╝╜¶T]w☼гх┐"╝♠px╞ы↨+♠ZZ♥♦♥♥
+send() failed with error: 10053
+uгЯЪbN┼йV╞лФ╙|►§B]я%tй♣Мd"(6<Е-д╢Г─уcЬог: г┼хБс↓Жb┼A0yя◄╞a♂╔ ЁznЄККGЮE↑◄E┌╩╜◄╧☺фЖїxgє░QНеPpjЪW╩I        ЬжБ@y█4Б9╢Ыч!ЪH↓ю☺‼Бх☺3'x0,▼змtщP╪ёл(q8Ў¶Ъ
+send() failed with error: 10053
+Received full line from TCP client (232): J9┌т║\иaI3Щ░6↓│↓7щ1з'шw4В
+send() failed with error: 10053
+recv() failed with error: 10053
+New TCP connection from 127.0.0.1:56645
+Received from UDP client 127.0.0.1:59235: 12
+Received from UDP client 127.0.0.1:53658: 12
+сa♀╦hхBМИ4§@жшжg╜Э  ☺☺↕♣♣☺♂☻☺D═♣♥☻h2+♠··♥♦♥♥►♫♀☻hhttp/1.1F▓nяgу};x'QЬdцЄZГ→.p▲тцё↕B♣Я►>╢╩▬╞r.▲ы→ш╖ж╥l(`Ц◄┐шД→м▌х☼8╧Lзu╖lL╗%Чg♥└+└/└,└0╠й╠и└‼└¶ЬЭ/5☺♠S→→-☻☺☺#↨
+Received full line from TCP client (232): ♀
+Received full line from TCP client (232): ╩╩◄ь↔↨↑3♦я♦э╩╩☺◄ь♦└ Д└ОЬq∙I.ЇYz0JоW╡_▐╤f:Вз.ksЮ\R\r7Г◄^╚ ♦↓Бv═y╬1xп∟К◄їчд~Ф╖єy╠M◄f↕ї╝╘е;,ф╩╙bб↕T→╡:#,╙F~g╬└Р
+send() failed with error: 10053
+ЯRu♠ДЗ═:♦░Т∟eЗ+[yАI♦yЦўБ·8(╨цв╖█НЎ6I\ИdТ°Ш▼∟ЭТRgx'k‼AQ╦W╗─y↓ХтЩ\F¶jч*╜Q╠♦║
+send() failed with error: 10053
+Received full line from TCP client (232): PjЁln☺
+send() failed with error: 10053
+Received full line from TCP client (232): ☺п¶▼rР─ъ╝9№#4┴i╚S∟rL ╧чип&Тu♫▄wr$┴БJG♠┘tpaS↕-╘.╟→7╞їВM↓ю∟▒QЄW■p§<ТB'‼КЇl╝▄К▒░х9╝pиHR├Ь№O♂С╛╦  ‼>ъ░ОШO°°W┼╢дЗLdхЕ↨яЖЬS♀5у┬┼Цї║╓ъЮ╞ГЦ╘qbt│Y♠+еvхеГх>¤8═Я|┤RИ'`l▬■└aэ╨(3HX╘Є╢h9╣4ЬаF4♂Н3╨ы=D☻┴_¶7 Vsw∟Г,═└♣☺*►^╥SЙ╪·iЕE┴БШ╜ЩA╢║Зnч√╝к╓H╟↕1ў╔♦
+send() failed with error: 10053
+recv() failed with error: 10053
+Received from UDP client 127.0.0.1:53658: 12
+recvfrom() failed with error: 10054
+recvfrom() failed with error: 10054
+recvfrom() failed with error: 10054
+recvfrom() failed with error: 10054
+Received from UDP client 127.0.0.1:53658: qu
+Received from UDP client 127.0.0.1:53658: 1qqqsssssss

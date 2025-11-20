@@ -31,7 +31,7 @@ def main():
     client.bind(("0.0.0.0", 0))  # 0 = любой свободный порт
     # Или просто не привязывать — ОС сама выберет локальный порт при первой отправке
 
-    server_addr = ("37.122.97.89", 8081)  # 127.0.0.1  Адрес сервера
+    server_addr = ("127.0.0.1", 8081)  # 37.122.97.89    127.0.0.1  Адрес сервера
 
 
     print("UDP-клиент запущен. Введите сообщение (или 'quit' для выхода):")
@@ -67,6 +67,12 @@ def main():
 if __name__ == "__main__":
     main()
 
+
+# Как включить Telnet Client в Windows 10/11:
+#    powershell:
+#    Add-WindowsCapability -Online -Name TelnetClient~~~~0.0.1.0
+#        или
+#    dism /online /Enable-Feature /FeatureName:TelnetClient
 
 
 #################################
