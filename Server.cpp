@@ -163,6 +163,91 @@ string processCommand(const string& cmd) {
     }
 }
 
+void processCompleteLine(const std::string& line, SOCKET client_fd) {
+    if (line.empty()) return;
+
+    std::cout << "Received full line from TCP client (" << client_fd << "): " << line << std::endl;
+
+    // Проверяем, начинается ли строка с '/'
+    if (!line.empty() && line[0] == '/') {
+        std::string response = processCommand(line);
+        if (send(client_fd, response.c_str(), (int)response.length(), 0) == SOCKET_ERROR) {
+            std::cerr << "send() failed with error: " << WSAGetLastError() << std::endl;
+        }
+    }
+    else {
+        // Эхо-ответ для обычных сообщений
+        std::string echo = "Echo: " + line + "\r\n";
+        if (send(client_fd, echo.c_str(), (int)echo.length(), 0) == SOCKET_ERROR) {
+            std::cerr << "send() failed with error: " << WSAGetLastError() << std::endl;
+        }
+    }
+}
+
+void handleTcpClient(SOCKET client_fd) {
+    char buffer[BUFFER_SIZE];
+    int bytes_read;
+    std::string input_buffer;
+
+    while (true) {
+        bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
+
+        // Обработка ошибок и закрытия соединения
+        if (bytes_read <= 0) {
+            if (bytes_read == 0) {
+                std::cout << "TCP client (" << client_fd << ") disconnected." << std::endl;
+                break;
+            }
+
+            int error = WSAGetLastError();
+            if (error == WSAEWOULDBLOCK) {
+                // Нет данных — пропускаем итерацию, не закрываем соединение
+                continue;
+            }
+            else {
+                std::cerr << "recv() failed with error: " << error << std::endl;
+                break;
+            }
+        }
+
+        // Добавляем данные в буфер
+        input_buffer.append(buffer, bytes_read);
+
+        // Поиск и обработка полных строк (как в предыдущем примере)
+        size_t pos;
+        while (true) {
+            pos = std::string::npos;
+
+            if ((pos = input_buffer.find("\r\n")) != std::string::npos) {
+                std::string line = input_buffer.substr(0, pos);
+                input_buffer.erase(0, pos + 2);
+                processCompleteLine(line, client_fd);
+                continue;
+            }
+
+            if ((pos = input_buffer.find('\n')) != std::string::npos) {
+                std::string line = input_buffer.substr(0, pos);
+                input_buffer.erase(0, pos + 1);
+                processCompleteLine(line, client_fd);
+                continue;
+            }
+
+            break;  // Нет полных строк — ждём дальше
+        }
+    }
+
+    // Закрытие соединения (как раньше)
+    closesocket(client_fd);
+    FD_CLR(client_fd, &allfds);
+    for (auto it = clients.begin(); it != clients.end(); ++it) {
+        if (it->fd == client_fd) {
+            clients.erase(it);
+            break;
+        }
+    }
+}
+
+
 void handleUdpClient(SOCKET udp_fd) {
     char buffer[BUFFER_SIZE];
     sockaddr_in client_addr{};
@@ -226,13 +311,20 @@ int main() {
     if (!initWinsock()) {
         return 1;
     }
-    SOCKET udp_server = createUdpServer(50000);
+
+    SOCKET udp_server = createUdpServer(8081);
     SOCKET tcp_server = createTcpServer(8080);
+
+    if (tcp_server == INVALID_SOCKET || udp_server == INVALID_SOCKET) {
+        WSACleanup();
+        return 1;
+    }
 
     FD_ZERO(&allfds);
     FD_SET(tcp_server, &allfds);
     FD_SET(udp_server, &allfds);
     max_sd = max(tcp_server, udp_server);
+
 
     cout << "UDP/TCP Server running. Waiting for connections...\n";
 
@@ -252,6 +344,13 @@ int main() {
         //  Обработка UDP-сервера
         if (FD_ISSET(udp_server, &readfds)) {
             handleUdpClient(udp_server);
+        }
+
+        // Обработка существующих TCP-клиентов
+        for (auto& client : clients) {
+            if (FD_ISSET(client.fd, &readfds)) {
+                handleTcpClient(client.fd);
+            }
         }
     }
 
