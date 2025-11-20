@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>A:\NJ\2025\НДМ Системы\Server\x64\Release\Server.exe</FullPath>
+      <FullPath>C:\Git\TCP-UDP-Server\x64\Release\Server.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

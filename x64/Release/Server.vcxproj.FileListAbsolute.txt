@@ -1,1 +1,2 @@
 A:\NJ\2025\НДМ Системы\Server\x64\Release\Server.exe
+C:\Git\TCP-UDP-Server\x64\Release\Server.exe
