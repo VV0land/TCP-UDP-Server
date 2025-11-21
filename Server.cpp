@@ -2,6 +2,9 @@
 //  Простеннький UDP-сервер.
 //  20.11.2025
 //  Добавлен TCP-сервер.
+//  21.11.2025
+//  gim commit - m "Небольшие изменения серверной части + возможность вводить IP/port на клиенте
+
 
 
 #include <iostream>
@@ -16,6 +19,10 @@ using namespace std;
 
 const int BUFFER_SIZE = 1024;
 const int MAX_CLIENTS = 100;
+
+// !!! ПРОБРОСЬ ПОРТ НА РОУТЕРЕ ДЛЯ ВНЕШНЕГО IP !!!
+const int TCPort = 50000;
+const int UDPort = 60000;
 
 fd_set readfds, allfds;
 SOCKET max_sd;
@@ -159,7 +166,7 @@ string processCommand(const string& cmd) {
         cout << "Shutdown command received. Server will terminate.\n";
         exit(0);
     } else {
-        return "Unknown command: " + cmd;
+        return "Unknown command: " + cmd + "\r\n";
     }
 }
 
@@ -312,8 +319,9 @@ int main() {
         return 1;
     }
 
-    SOCKET udp_server = createUdpServer(8081);
-    SOCKET tcp_server = createTcpServer(8080);
+    // !!! ПРОБРОСЬ ПОРТ НА РОУТЕРЕ ДЛЯ ВНЕШНЕГО IP !!!
+    SOCKET udp_server = createUdpServer(UDPort);  //  8081
+    SOCKET tcp_server = createTcpServer(TCPort);  //  8080
 
     if (tcp_server == INVALID_SOCKET || udp_server == INVALID_SOCKET) {
         WSACleanup();
