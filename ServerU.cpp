@@ -21,6 +21,8 @@ const int EPOLL_MAX_EVENTS = 64;
 const int TCP_PORT = 50000;
 const int UDP_PORT = 60000;
 
+int total_connections = 0;        // Общее число подключений за всё время
+
 struct ClientData {
     int fd;
     sockaddr_in addr;
@@ -119,7 +121,7 @@ bool addToEpoll(int fd) {
 }
 
 // Обработка нового TCP‑подключения
-void acceptTcpConnection(int server_fd) {
+/*void acceptTcpConnection(int server_fd) {
     sockaddr_in client_addr{};
     socklen_t client_len = sizeof(client_addr);
     int client_fd = accept(server_fd, (sockaddr*)&client_addr, &client_len);
@@ -149,10 +151,10 @@ void acceptTcpConnection(int server_fd) {
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
     cout << "New TCP connection from " << client_ip << ":"
          << ntohs(client_addr.sin_port) << endl;
-}
+}*/
 
 // Парсер команд
-string processCommand(const string& cmd) {
+/*string processCommand(const string& cmd) {
     if (cmd == "/time") {
         time_t now = time(nullptr);
         struct tm timeinfo;
@@ -168,7 +170,82 @@ string processCommand(const string& cmd) {
     } else {
         return "Unknown command: " + cmd + "\r\n";
     }
+}*/
+
+//  23.11.2025
+
+// Парсер команд новый
+std::string processCommand(const std::string& cmd) {
+    if (cmd == "/time") {
+        // Возвращаем текущее время в формате YYYY-MM-DD HH:MM:SS
+        std::time_t now = std::time(nullptr);
+        std::tm timeinfo;
+        localtime_r(&now, &timeinfo);
+        char buffer[20];
+        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        return std::string(buffer) + "\r\n";
+    }
+    else if (cmd == "/stats") {
+        // Собираем статистику:
+        // - total_connections: сколько клиентов подключалось за всё время
+        // - active_clients: сколько сейчас онлайн (размер вектора clients)
+        int active_clients = clients.size();
+        return "Total connections: " + std::to_string(total_connections) +
+            ", Active clients: " + std::to_string(active_clients) + "\r\n";
+    }
+    else if (cmd == "/shutdown") {
+        std::cout << "Shutdown command received. Server will terminate.\n";
+        std::exit(0);
+    }
+    else {
+        // Неизвестная команда
+        return "Unknown command: " + cmd + "\r\n";
+    }
 }
+
+// Функция принятия нового TCP‑подключения
+void acceptTcpConnection(int server_fd) {
+    struct sockaddr_in client_addr {};
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+
+    if (client_fd == -1) {
+        if (errno != EAGAIN && errno != EWOULDBLOCK) {
+            std::perror("accept() failed");
+        }
+        return;
+    }
+
+    // Проверяем лимит клиентов
+    if (clients.size() >= MAX_CLIENTS) {
+        std::cerr << "Max clients limit reached. Rejecting new connection.\n";
+        close(client_fd);
+        return;
+    }
+
+    // Устанавливаем неблокирующий режим для клиентского сокета
+    if (!setNonBlocking(client_fd)) {
+        close(client_fd);
+        return;
+    }
+
+    // Добавляем клиента в список активных
+    clients.push_back({ client_fd, client_addr });
+    addToEpoll(client_fd);
+
+    // Увеличиваем общий счётчик подключений
+    total_connections++;
+
+    // Логируем подключение
+    char client_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
+    std::cout << "New TCP connection from " << client_ip << ":"
+        << ntohs(client_addr.sin_port) << " (total: "
+        << total_connections << ")\n";
+}
+
+//  23.11.2025
+
 
 // Обработка полной строки от клиента
 void processCompleteLine(const string& line, int client_fd) {
