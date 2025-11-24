@@ -1,3 +1,4 @@
+//24.11.25
 #include <iostream>
 #include <string>
 #include <vector>
@@ -120,82 +121,28 @@ bool addToEpoll(int fd) {
     return true;
 }
 
-// Обработка нового TCP‑подключения
-/*void acceptTcpConnection(int server_fd) {
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-    int client_fd = accept(server_fd, (sockaddr*)&client_addr, &client_len);
-
-    if (client_fd == -1) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            perror("accept() failed");
-        }
-        return;
-    }
-
-    if (clients.size() >= MAX_CLIENTS) {
-        cerr << "Max clients limit reached. Rejecting new connection." << endl;
-        close(client_fd);
-        return;
-    }
-
-    if (!setNonBlocking(client_fd)) {
-        close(client_fd);
-        return;
-    }
-
-    clients.push_back({ client_fd, client_addr });
-    addToEpoll(client_fd);
-
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-    cout << "New TCP connection from " << client_ip << ":"
-         << ntohs(client_addr.sin_port) << endl;
-}*/
-
-// Парсер команд
-/*string processCommand(const string& cmd) {
+// Парсер команд новый
+string processCommand(const string& cmd) {
     if (cmd == "/time") {
+        // Возвращаем текущее время в формате YYYY-MM-DD HH:MM:SS
         time_t now = time(nullptr);
-        struct tm timeinfo;
+        tm timeinfo;
         localtime_r(&now, &timeinfo);
         char buffer[20];
         strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
         return string(buffer) + "\r\n";
-    } else if (cmd == "/stats") {
-        return "Total connections: " + to_string(clients.size()) + "\r\n";
-    } else if (cmd == "/shutdown") {
-        cout << "Shutdown command received. Server will terminate.\n";
-        exit(0);
-    } else {
-        return "Unknown command: " + cmd + "\r\n";
-    }
-}*/
-
-//  23.11.2025
-
-// Парсер команд новый
-std::string processCommand(const std::string& cmd) {
-    if (cmd == "/time") {
-        // Возвращаем текущее время в формате YYYY-MM-DD HH:MM:SS
-        std::time_t now = std::time(nullptr);
-        std::tm timeinfo;
-        localtime_r(&now, &timeinfo);
-        char buffer[20];
-        std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        return std::string(buffer) + "\r\n";
     }
     else if (cmd == "/stats") {
         // Собираем статистику:
         // - total_connections: сколько клиентов подключалось за всё время
         // - active_clients: сколько сейчас онлайн (размер вектора clients)
         int active_clients = clients.size();
-        return "Total connections: " + std::to_string(total_connections) +
-            ", Active clients: " + std::to_string(active_clients) + "\r\n";
+        return "Total connections: " + to_string(total_connections) +
+            ", Active clients: " + to_string(active_clients) + "\r\n";
     }
     else if (cmd == "/shutdown") {
-        std::cout << "Shutdown command received. Server will terminate.\n";
-        std::exit(0);
+        cout << "Shutdown command received. Server will terminate.\n";
+        exit(0);
     }
     else {
         // Неизвестная команда
@@ -211,14 +158,14 @@ void acceptTcpConnection(int server_fd) {
 
     if (client_fd == -1) {
         if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            std::perror("accept() failed");
+            perror("accept() failed");
         }
         return;
     }
 
     // Проверяем лимит клиентов
     if (clients.size() >= MAX_CLIENTS) {
-        std::cerr << "Max clients limit reached. Rejecting new connection.\n";
+        cerr << "Max clients limit reached. Rejecting new connection.\n";
         close(client_fd);
         return;
     }
@@ -239,7 +186,7 @@ void acceptTcpConnection(int server_fd) {
     // Логируем подключение
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-    std::cout << "New TCP connection from " << client_ip << ":"
+    cout << "New TCP connection from " << client_ip << ":"
         << ntohs(client_addr.sin_port) << " (total: "
         << total_connections << ")\n";
 }
