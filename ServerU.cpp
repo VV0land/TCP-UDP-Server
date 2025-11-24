@@ -112,7 +112,8 @@ int createTcpServer(int port) {
 // Добавление сокета в epoll
 bool addToEpoll(int fd) {
     epoll_event event;
-    event.events = EPOLLIN | EPOLLET;  // edge‑triggered
+    //event.events = EPOLLIN | EPOLLET;  // edge‑triggered
+    event.events = EPOLLIN | EPOLLET | EPOLLOUT;  // Добавляем EPOLLOUT
     event.data.fd = fd;
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
         perror("epoll_ctl ADD failed");
@@ -180,6 +181,21 @@ void acceptTcpConnection(int server_fd) {
     clients.push_back({ client_fd, client_addr });
     addToEpoll(client_fd);
 
+
+
+
+    // После clients.push_back(...) и addToEpoll(...)
+    const char* welcome = "Server ready. Type your message:\r\n";
+    if (send(client_fd, welcome, strlen(welcome), 0) == -1) {
+        perror("send welcome failed");
+    }
+    else {
+        cout << "Sent welcome message to client " << client_fd << endl;
+    }
+
+
+
+
     // Увеличиваем общий счётчик подключений
     total_connections++;
 
@@ -202,13 +218,22 @@ void processCompleteLine(const string& line, int client_fd) {
 
     string response;
     if (!line.empty() && line[0] == '/') {
-        response = processCommand(line);
+        response = processCommand(line) + "\r\n";
     } else {
         response = "Echo: " + line + "\r\n";
     }
 
-    if (send(client_fd, response.c_str(), response.length(), 0) == -1) {
+    //if (send(client_fd, response.c_str(), response.length(), 0) == -1) {
+    //    perror("send() failed");
+
+    ssize_t sent = send(client_fd, response.c_str(), response.length(), 0);
+    if (sent == -1) {
         perror("send() failed");
+    }
+    else {
+        cout << "Sent " << sent << " bytes to client" << endl;
+        cout.flush();  // Принудительный вывод
+    }
     }
 }
 
@@ -360,6 +385,16 @@ int main() {
             perror("epoll_wait() failed");
             break;
         }
+
+
+
+        if (events[i].events & EPOLLOUT) {
+            // Здесь можно отправлять данные, если есть очередь
+            // Для простоты пропускаем (в вашем случае отправка идёт сразу в processCompleteLine)
+        }
+
+
+
 
         for (int i = 0; i < nfds; ++i) {
             int fd = events[i].data.fd;
