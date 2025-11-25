@@ -164,7 +164,7 @@ string processCommand(const string& cmd) {
 }
 
 // Функция принятия нового TCP‑подключения
-void acceptTcpConnection(int server_fd) {
+/*void acceptTcpConnection(int server_fd) {
     struct sockaddr_in client_addr {};
     socklen_t client_len = sizeof(client_addr);
     int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
@@ -217,6 +217,30 @@ void acceptTcpConnection(int server_fd) {
     cout << "New TCP connection from " << client_ip << ":"
         << ntohs(client_addr.sin_port) << " (total: "
         << total_connections << ")\n";
+}*/
+
+void acceptTcpConnection(int tcp_server) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(tcp_server, (struct sockaddr*)&client_addr, &client_len);
+
+    if (client_fd == -1) {
+        perror("accept() failed");
+        return;
+    }
+
+    cout << "New TCP connection from " << inet_ntoa(client_addr.sin_addr)
+        << ":" << ntohs(client_addr.sin_port) << endl;
+
+    // Добавляем клиентский fd в epoll
+    if (!addToEpoll(epoll_fd, client_fd, EPOLLIN | EPOLLET)) {
+        close(client_fd);
+        return;
+    }
+
+    // Отправляем приветствие
+    const char* welcome = "Server ready. Type your message:\r\n";
+    send(client_fd, welcome, strlen(welcome), 0);
 }
 
 //  23.11.2025
@@ -245,7 +269,6 @@ void processCompleteLine(const string& line, int client_fd) {
     else {
         cout << "Sent " << sent << " bytes to client" << endl;
         cout.flush();  // Принудительный вывод
-    }
     }
 }
 
