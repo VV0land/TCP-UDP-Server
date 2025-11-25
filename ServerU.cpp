@@ -1,4 +1,3 @@
-//24.11.25
 #include <iostream>
 #include <string>
 #include <vector>
@@ -18,19 +17,25 @@ const int BUFFER_SIZE = 1024;
 const int MAX_CLIENTS = 100;
 const int EPOLL_MAX_EVENTS = 64;
 
+
 // Порты для сервера
 const int TCP_PORT = 50000;
 const int UDP_PORT = 60000;
 
+
 int total_connections = 0;        // Общее число подключений за всё время
 
+
+// Структура клиента: теперь включает буфер для неполных строк
 struct ClientData {
     int fd;
     sockaddr_in addr;
+    string buffer;  // Буфер для накопления неполных строк
 };
 
 vector<ClientData> clients;
 int epoll_fd;
+
 
 // Установка неблокирующего режима
 bool setNonBlocking(int sock) {
@@ -109,22 +114,10 @@ int createTcpServer(int port) {
     return server_fd;
 }
 
-// Добавление сокета в epoll
-/*bool addToEpoll(int fd) {
-    epoll_event event;
-    //event.events = EPOLLIN | EPOLLET;  // edge‑triggered
-    event.events = EPOLLIN | EPOLLET | EPOLLOUT;  // Добавляем EPOLLOUT
-    event.data.fd = fd;
-    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
-        perror("epoll_ctl ADD failed");
-        return false;
-    }
-    return true;
-}*/
-
+// Добавление сокета в epoll (теперь с явными параметрами)
 bool addToEpoll(int epoll_fd, int fd, uint32_t events) {
     struct epoll_event event;
-    event.events = events;  // EPOLLIN | EPOLLET (без EPOLLOUT для серверных)
+    event.events = events;
     event.data.fd = fd;
 
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
@@ -134,10 +127,9 @@ bool addToEpoll(int epoll_fd, int fd, uint32_t events) {
     return true;
 }
 
-// Парсер команд новый
+// Парсер команд
 string processCommand(const string& cmd) {
     if (cmd == "/time") {
-        // Возвращаем текущее время в формате YYYY-MM-DD HH:MM:SS
         time_t now = time(nullptr);
         tm timeinfo;
         localtime_r(&now, &timeinfo);
@@ -146,9 +138,6 @@ string processCommand(const string& cmd) {
         return string(buffer) + "\r\n";
     }
     else if (cmd == "/stats") {
-        // Собираем статистику:
-        // - total_connections: сколько клиентов подключалось за всё время
-        // - active_clients: сколько сейчас онлайн (размер вектора clients)
         int active_clients = clients.size();
         return "Total connections: " + to_string(total_connections) +
             ", Active clients: " + to_string(active_clients) + "\r\n";
@@ -158,67 +147,11 @@ string processCommand(const string& cmd) {
         exit(0);
     }
     else {
-        // Неизвестная команда
         return "Unknown command: " + cmd + "\r\n";
     }
 }
 
-// Функция принятия нового TCP‑подключения
-/*void acceptTcpConnection(int server_fd) {
-    struct sockaddr_in client_addr {};
-    socklen_t client_len = sizeof(client_addr);
-    int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
-
-    if (client_fd == -1) {
-        if (errno != EAGAIN && errno != EWOULDBLOCK) {
-            perror("accept() failed");
-        }
-        return;
-    }
-
-    // Проверяем лимит клиентов
-    if (clients.size() >= MAX_CLIENTS) {
-        cerr << "Max clients limit reached. Rejecting new connection.\n";
-        close(client_fd);
-        return;
-    }
-
-    // Устанавливаем неблокирующий режим для клиентского сокета
-    if (!setNonBlocking(client_fd)) {
-        close(client_fd);
-        return;
-    }
-
-    // Добавляем клиента в список активных
-    clients.push_back({ client_fd, client_addr });
-    addToEpoll(client_fd);
-
-
-
-
-    // После clients.push_back(...) и addToEpoll(...)
-    const char* welcome = "Server ready. Type your message:\r\n";
-    if (send(client_fd, welcome, strlen(welcome), 0) == -1) {
-        perror("send welcome failed");
-    }
-    else {
-        cout << "Sent welcome message to client " << client_fd << endl;
-    }
-
-
-
-
-    // Увеличиваем общий счётчик подключений
-    total_connections++;
-
-    // Логируем подключение
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-    cout << "New TCP connection from " << client_ip << ":"
-        << ntohs(client_addr.sin_port) << " (total: "
-        << total_connections << ")\n";
-}*/
-
+// Принятие нового TCP‑подключения
 void acceptTcpConnection(int tcp_server) {
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
@@ -232,6 +165,13 @@ void acceptTcpConnection(int tcp_server) {
     cout << "New TCP connection from " << inet_ntoa(client_addr.sin_addr)
         << ":" << ntohs(client_addr.sin_port) << endl;
 
+    // Проверяем лимит клиентов
+    if (clients.size() >= MAX_CLIENTS) {
+        cerr << "Max clients limit reached. Rejecting new connection.\n";
+        close(client_fd);
+        return;
+    }
+
     // Добавляем клиентский fd в epoll
     if (!addToEpoll(epoll_fd, client_fd, EPOLLIN | EPOLLET)) {
         close(client_fd);
@@ -241,10 +181,13 @@ void acceptTcpConnection(int tcp_server) {
     // Отправляем приветствие
     const char* welcome = "Server ready. Type your message:\r\n";
     send(client_fd, welcome, strlen(welcome), 0);
+
+    // Увеличиваем счётчик подключений
+    total_connections++;
+
+    // Добавляем клиента в список (с пустым буфером)
+    clients.push_back({ client_fd, client_addr, "" });
 }
-
-//  23.11.2025
-
 
 // Обработка полной строки от клиента
 void processCompleteLine(const string& line, int client_fd) {
@@ -254,13 +197,11 @@ void processCompleteLine(const string& line, int client_fd) {
 
     string response;
     if (!line.empty() && line[0] == '/') {
-        response = processCommand(line) + "\r\n";
-    } else {
+        response = processCommand(line);  // Уже содержит \r\n
+    }
+    else {
         response = "Echo: " + line + "\r\n";
     }
-
-    //if (send(client_fd, response.c_str(), response.length(), 0) == -1) {
-    //    perror("send() failed");
 
     ssize_t sent = send(client_fd, response.c_str(), response.length(), 0);
     if (sent == -1) {
@@ -268,191 +209,158 @@ void processCompleteLine(const string& line, int client_fd) {
     }
     else {
         cout << "Sent " << sent << " bytes to client" << endl;
-        cout.flush();  // Принудительный вывод
+        cout.flush();
     }
 }
 
-// Чтение данных от TCP‑клиента
+// Чтение данных от TCP‑клиента (исправлено: без while(true), с буфером клиента)
 void handleTcpClient(int client_fd) {
+    // Находим клиента в списке
+    auto it = std::find_if(clients.begin(), clients.end(),
+        [client_fd](const ClientData& c) { return c.fd == client_fd; });
+    if (it == clients.end()) return;
+
+
     char buffer[BUFFER_SIZE];
-    ssize_t bytes_read;
-    string input_buffer;
-
-    while (true) {
-        bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
-
-        if (bytes_read > 0) {
-            input_buffer.append(buffer, bytes_read);
-
-            // Поиск полных строк (\r\n или \n)
-            size_t pos;
-            while (true) {
-                pos = string::npos;
-
-                if ((pos = input_buffer.find("\r\n")) != string::npos) {
-                    string line = input_buffer.substr(0, pos);
-                    input_buffer.erase(0, pos + 2);
-                    processCompleteLine(line, client_fd);
-                    continue;
-                }
-
-                if ((pos = input_buffer.find('\n')) != string::npos) {
-                    string line = input_buffer.substr(0, pos);
-                    input_buffer.erase(0, pos + 1);
-                    processCompleteLine(line, client_fd);
-                    continue;
-                }
-
-                break; // Нет полных строк — ждём дальше
-            }
-        }
-        else if (bytes_read == 0) {
-            // Клиент закрыл соединение
-            cout << "TCP client (" << client_fd << ") disconnected." << endl;
-            close(client_fd);
-            // Удаляем из списка клиентов
-            for (auto it = clients.begin(); it != clients.end(); ++it) {
-                if (it->fd == client_fd) {
-                    clients.erase(it);
-                    break;
-                }
-            }
-            return;
-        }
-        else { // bytes_read < 0
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // Нет данных — продолжаем цикл
-                return;
-            }
-            else {
-                perror("recv() failed");
-                close(client_fd);
-                // Удаляем клиента
-                for (auto it = clients.begin(); it != clients.end(); ++it) {
-                    if (it->fd == client_fd) {
-                        clients.erase(it);
-                        break;
-                    }
-                }
-                return;
-            }
-        }
-    }
-}
-
-// Обработка UDP‑клиента
-void handleUdpClient(int udp_fd) {
-    char buffer[BUFFER_SIZE];
-    sockaddr_in client_addr{};
-    socklen_t client_len = sizeof(client_addr);
-
-    ssize_t bytes_read = recvfrom(udp_fd, buffer, BUFFER_SIZE, 0,
-                                (sockaddr*)&client_addr, &client_len);
+    ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
 
     if (bytes_read > 0) {
-        string msg(buffer, bytes_read);
+        it->buffer.append(buffer, bytes_read);  // Добавляем в буфер клиента
 
-        // Отслеживаем уникальных клиентов (IP + порт)
-        static set<pair<uint32_t, uint16_t>> known_clients;
-        auto client_id = make_pair(client_addr.sin_addr.s_addr,
-                                 client_addr.sin_port);
 
-        if (known_clients.find(client_id) == known_clients.end()) {
-            known_clients.insert(client_id);
-            cout << "New UDP client: ";
-        }
-        else {
-            cout << "UDP client: ";
-        }
+        // Обработка полных строк
+        // Поиск полных строк (\r\n или \n)
+        size_t pos;
+        while (true) {
+            pos = string::npos;
 
-        char client_ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
-        cout << client_ip << ":" << ntohs(client_addr.sin_port)
-             << " -> " << msg << endl;
+            // Ищем \r\n (стандартный CRLF)
+            if ((pos = it->buffer.find("\r\n")) != string::npos) {
+                string line = it->buffer.substr(0, pos);
+                it->buffer.erase(0, pos + 2);  // Удаляем обработанную строку + \r\n
+                processCompleteLine(line, client_fd);
+                continue;
+            }
 
-        string response;
-        if (!msg.empty() && msg[0] == '/') {
-            response = processCommand(msg);
-        }
-        else {
-            response = msg; // Эхо для UDP
-        }
+            // Ищем одиночный \n (на случай нестандартных клиентов)
+            if ((pos = it->buffer.find('\n')) != string::npos) {
+                string line = it->buffer.substr(0, pos);
+                it->buffer.erase(0, pos + 1);  // Удаляем обработанную строку + \n
+                processCompleteLine(line, client_fd);
+                continue;
+            }
 
-        if (sendto(udp_fd, response.c_str(), response.length(), 0,
-              (sockaddr*)&client_addr, client_len) == -1) {
-            perror("sendto() failed");
+            break;  // Нет полных строк — ждём следующих данных
         }
     }
-    else if (bytes_read == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
-        perror("recvfrom() failed");
+    else if (bytes_read == 0) {
+        // Клиент закрыл соединение
+        cout << "TCP client (" << client_fd << ") disconnected." << endl;
+
+        // Удаляем из epoll
+        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
+
+        // Закрываем дескриптор
+        close(client_fd);
+
+        // Удаляем клиента из списка
+        clients.erase(it);
+    }
+    else {  // bytes_read < 0 — ошибка
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Нет данных — нормально для edge‑triggered режима
+            return;
+        }
+        else {
+            perror("recv() failed");
+
+            // Удаляем из epoll
+            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
+
+            // Закрываем дескриптор
+            close(client_fd);
+
+            // Удаляем клиента из списка
+            clients.erase(it);
+        }
     }
 }
 
+// Главная функция сервера
 int main() {
-    // Создаём epoll
+    // Создаём TCP и UDP серверы
+    int tcp_server = createTcpServer(TCP_PORT);
+    if (tcp_server == -1) {
+        return 1;
+    }
+
+    int udp_server = createUdpServer(UDP_PORT);
+    if (udp_server == -1) {
+        close(tcp_server);
+        return 1;
+    }
+
+    // Создаём epoll-дескриптор
     epoll_fd = epoll_create1(0);
     if (epoll_fd == -1) {
         perror("epoll_create1() failed");
+        close(tcp_server);
+        close(udp_server);
         return 1;
     }
 
-    // Запускаем серверы
-    int udp_server = createUdpServer(UDP_PORT);
-    int tcp_server = createTcpServer(TCP_PORT);
-
-    if (udp_server == -1 || tcp_server == -1) {
+    // Добавляем TCP и UDP сокеты в epoll
+    if (!addToEpoll(epoll_fd, tcp_server, EPOLLIN | EPOLLET)) {
         close(epoll_fd);
+        close(tcp_server);
+        close(udp_server);
         return 1;
     }
 
-    // Добавляем серверные сокеты в epoll
-    /*addToEpoll(udp_server);
-    addToEpoll(tcp_server);*/
+    if (!addToEpoll(epoll_fd, udp_server, EPOLLIN | EPOLLET)) {
+        close(epoll_fd);
+        close(tcp_server);
+        close(udp_server);
+        return 1;
+    }
 
-    addToEpoll(epoll_fd, udp_server, EPOLLIN | EPOLLET);
-    addToEpoll(epoll_fd, tcp_server, EPOLLIN | EPOLLET);
+    // Массив для хранения событий epoll
+    struct epoll_event events[EPOLL_MAX_EVENTS];
 
-    cout << "UDP/TCP Server running. Waiting for connections...\n";
-
-    epoll_event events[EPOLL_MAX_EVENTS];
+    cout << "Server running. Waiting for connections..." << endl;
 
     while (true) {
+        // Ожидание событий (тайм‑аут -1 = бесконечное ожидание)
         int nfds = epoll_wait(epoll_fd, events, EPOLL_MAX_EVENTS, -1);
-
         if (nfds == -1) {
             perror("epoll_wait() failed");
             break;
         }
 
+        // Обработка всех произошедших событий
         for (int i = 0; i < nfds; ++i) {
             int fd = events[i].data.fd;
 
-
-
-            if (events[i].events & EPOLLOUT) {
-                // Здесь можно отправлять данные, если есть очередь
-                // Для простоты пропускаем (в вашем случае отправка идёт сразу в processCompleteLine)
-                continue; // Пропускаю, если это событие отправки...
-            }
-
-
-
+            // Если событие от TCP‑сервера — принимаем новое подключение
             if (fd == tcp_server) {
                 acceptTcpConnection(tcp_server);
             }
+            // Если событие от UDP‑сервера — обрабатываем UDP‑клиента
             else if (fd == udp_server) {
-                handleUdpClient(udp_server);
+                // TODO: реализовать handleUdpClient()
+                cout << "UDP event received (not implemented)" << endl;
             }
+            // Иначе — событие от клиентского TCP‑сокета
             else {
-                // Это клиентский TCP‑сокет
                 handleTcpClient(fd);
             }
         }
     }
 
-    // Очистка
-    close(udp_server);
-    close(tcp_server);
+    // Очистка ресурсов перед завершением
     close(epoll_fd);
+    close(tcp_server);
+    close(udp_server);
+
     return 0;
 }
