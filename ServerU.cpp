@@ -110,11 +110,23 @@ int createTcpServer(int port) {
 }
 
 // Добавление сокета в epoll
-bool addToEpoll(int fd) {
+/*bool addToEpoll(int fd) {
     epoll_event event;
     //event.events = EPOLLIN | EPOLLET;  // edge‑triggered
     event.events = EPOLLIN | EPOLLET | EPOLLOUT;  // Добавляем EPOLLOUT
     event.data.fd = fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
+        perror("epoll_ctl ADD failed");
+        return false;
+    }
+    return true;
+}*/
+
+bool addToEpoll(int epoll_fd, int fd, uint32_t events) {
+    struct epoll_event event;
+    event.events = events;  // EPOLLIN | EPOLLET (без EPOLLOUT для серверных)
+    event.data.fd = fd;
+
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
         perror("epoll_ctl ADD failed");
         return false;
@@ -371,8 +383,11 @@ int main() {
     }
 
     // Добавляем серверные сокеты в epoll
-    addToEpoll(udp_server);
-    addToEpoll(tcp_server);
+    /*addToEpoll(udp_server);
+    addToEpoll(tcp_server);*/
+
+    addToEpoll(epoll_fd, udp_server, EPOLLIN | EPOLLET);
+    addToEpoll(epoll_fd, tcp_server, EPOLLIN | EPOLLET);
 
     cout << "UDP/TCP Server running. Waiting for connections...\n";
 
@@ -386,18 +401,18 @@ int main() {
             break;
         }
 
-
-
-        if (events[i].events & EPOLLOUT) {
-            // Здесь можно отправлять данные, если есть очередь
-            // Для простоты пропускаем (в вашем случае отправка идёт сразу в processCompleteLine)
-        }
-
-
-
-
         for (int i = 0; i < nfds; ++i) {
             int fd = events[i].data.fd;
+
+
+
+            if (events[i].events & EPOLLOUT) {
+                // Здесь можно отправлять данные, если есть очередь
+                // Для простоты пропускаем (в вашем случае отправка идёт сразу в processCompleteLine)
+                continue; // Пропускаю, если это событие отправки...
+            }
+
+
 
             if (fd == tcp_server) {
                 acceptTcpConnection(tcp_server);

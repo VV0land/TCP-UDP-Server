@@ -186,7 +186,7 @@ void processCompleteLine(const string& line, SOCKET client_fd) {
     }
     else {
         // Эхо-ответ для обычных сообщений
-        string echo = "Echo: " + line + "\r\n";
+        string echo = /*"Echo: " + */line + "\r\n";
         if (send(client_fd, echo.c_str(), (int)echo.length(), 0) == SOCKET_ERROR) {
             cerr << "send() failed with error: " << WSAGetLastError() << endl;
         }
