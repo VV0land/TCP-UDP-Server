@@ -1,4 +1,4 @@
-//24.11.25
+//26.11.2025
 #include <iostream>
 #include <string>
 #include <vector>
@@ -11,7 +11,7 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
-
+ 
 using namespace std;
 
 const int BUFFER_SIZE = 1024;
@@ -27,6 +27,7 @@ int total_connections = 0;        // Общее число подключени�
 struct ClientData {
     int fd;
     sockaddr_in addr;
+    //string buffer;  // Буфер для накопления данных  26.11.25
 };
 
 vector<ClientData> clients;
@@ -143,7 +144,7 @@ string processCommand(const string& cmd) {
         localtime_r(&now, &timeinfo);
         char buffer[20];
         strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        return string(buffer) + "\r\n";
+        return string(buffer) /*+ "\r\n"*/;
     }
     else if (cmd == "/stats") {
         // Собираем статистику:
@@ -151,7 +152,7 @@ string processCommand(const string& cmd) {
         // - active_clients: сколько сейчас онлайн (размер вектора clients)
         int active_clients = clients.size();
         return "Total connections: " + to_string(total_connections) +
-            ", Active clients: " + to_string(active_clients) + "\r\n";
+            ", Active clients: " + to_string(active_clients) /*+ "\r\n"*/;
     }
     else if (cmd == "/shutdown") {
         cout << "Shutdown command received. Server will terminate.\n";
@@ -159,7 +160,7 @@ string processCommand(const string& cmd) {
     }
     else {
         // Неизвестная команда
-        return "Unknown command: " + cmd + "\r\n";
+        return "Unknown command: " + cmd/* + "\r\n"*/;
     }
 }
 
@@ -243,7 +244,35 @@ void acceptTcpConnection(int tcp_server) {
     send(client_fd, welcome, strlen(welcome), 0);
 }
 
-//  23.11.2025
+
+//  26.11.25
+/*void acceptTcpConnection(int tcp_server) {
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(tcp_server, (struct sockaddr*)&client_addr, &client_len);
+
+    if (client_fd == -1) {
+        perror("accept() failed");
+        return;
+    }
+
+    cout << "New TCP connection from " << inet_ntoa(client_addr.sin_addr)
+        << ":" << ntohs(client_addr.sin_port) << endl;
+
+    // Добавляем клиента в список (с пустым буфером)
+    clients.push_back({ client_fd, client_addr, "" });
+
+    // Добавляем в epoll
+    if (!addToEpoll(epoll_fd, client_fd, EPOLLIN | EPOLLET)) {
+        close(client_fd);
+        clients.pop_back();
+        return;
+    }
+
+    // Приветствие
+    const char* welcome = "Server ready. Type your message:\r\n";
+    send(client_fd, welcome, strlen(welcome), 0);
+}*/
 
 
 // Обработка полной строки от клиента
@@ -256,7 +285,7 @@ void processCompleteLine(const string& line, int client_fd) {
     if (!line.empty() && line[0] == '/') {
         response = processCommand(line) + "\r\n";
     } else {
-        response = "Echo: " + line + "\r\n";
+        response = /*"Echo: " +*/ line + "\r\n";
     }
 
     //if (send(client_fd, response.c_str(), response.length(), 0) == -1) {
@@ -271,6 +300,25 @@ void processCompleteLine(const string& line, int client_fd) {
         cout.flush();  // Принудительный вывод
     }
 }
+
+// 26.11.25
+/*void processCompleteLine(const string& line, int client_fd) {
+    if (line.empty()) return;
+
+    cout << "Received: " << line << endl;
+
+    // Эхо-ответ: "Echo: <сообщение>\r\n"
+    string response = "Echo: " + line + "\r\n";
+
+    ssize_t sent = send(client_fd, response.c_str(), response.length(), 0);
+    if (sent == -1) {
+        perror("send() failed");
+    }
+    else {
+        cout << "Sent " << sent << " bytes to client" << endl;
+    }
+}*/
+
 
 // Чтение данных от TCP‑клиента
 void handleTcpClient(int client_fd) {
@@ -339,6 +387,68 @@ void handleTcpClient(int client_fd) {
         }
     }
 }
+
+
+
+// 26.11.25
+/*#include <algorithm>
+void handleTcpClient(int client_fd) {
+    // Находим клиента в списке
+    auto it = find_if(clients.begin(), clients.end(),
+        [client_fd](const ClientData& c) { return c.fd == client_fd; });
+    if (it == clients.end()) return;
+
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
+
+    if (bytes_read > 0) {
+        it->buffer.append(buffer, bytes_read);  // Добавляем в буфер клиента
+
+cout << "Buffer after append: " << it->buffer << endl;
+
+        // Обработка полных строк (\r\n или \n)
+        size_t pos;
+        while (true) {
+            pos = string::npos;
+
+            if ((pos = it->buffer.find("\r\n")) != string::npos) {
+                string line = it->buffer.substr(0, pos);
+                it->buffer.erase(0, pos + 2);
+                processCompleteLine(line, client_fd);
+                continue;
+            }
+
+            if ((pos = it->buffer.find('\n')) != string::npos) {
+                string line = it->buffer.substr(0, pos);
+                it->buffer.erase(0, pos + 1);
+                processCompleteLine(line, client_fd);
+                continue;
+            }
+
+            break;  // Нет полных строк — ждём следующих данных
+        }
+    }
+    else if (bytes_read == 0) {
+        cout << "TCP client (" << client_fd << ") disconnected." << endl;
+        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
+        close(client_fd);
+        clients.erase(it);
+    }
+    else {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            return;
+        }
+        else {
+            perror("recv() failed");
+            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, client_fd, nullptr);
+            close(client_fd);
+            clients.erase(it);
+        }
+    }
+}*/
+
+
+
 
 // Обработка UDP‑клиента
 void handleUdpClient(int udp_fd) {

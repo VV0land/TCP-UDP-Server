@@ -7,7 +7,7 @@
     Иначе использует переданный сокет.
     Возвращает сокет для повторного использования.
     """
-    try:
+    try:  
         if sock is None:
             # Создаём новый сокет и подключаемся
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
