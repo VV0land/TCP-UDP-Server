@@ -1,26 +1,113 @@
 ﻿import socket
 
-def tcp_client(host, port, message):
-    """Отправка сообщения через TCP"""
+'''def tcp_client(host, port, message, sock=None):
+    """
+    Отправка сообщения через TCP.
+    Если sock=None — создаёт новое соединение.
+    Иначе использует переданный сокет.
+    Возвращает сокет для повторного использования.
+    """
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        if sock is None:
+            # Создаём новый сокет и подключаемся
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((host, port))
             print(f"[TCP] Подключено к {host}:{port}")
 
-            # Отправляем с \r\n (как ожидает сервер)
-            data = (message + "\r\n").encode('utf-8')
-            sock.sendall(data)
-            print(f"[TCP] Отправлено: {message}")
+        # Отправляем сообщение с CRLF
+        data = (message + "\r\n").encode('utf-8')
+        sock.sendall(data)
+        print(f"[TCP] Отправлено: {message}")
 
-            # Получаем ответ
-            sock.settimeout(5.0)
-            response = sock.recv(1024)
-            if response:
-                print(f"[TCP] Ответ: {response.decode('utf-8', errors='replace')}")
-            else:
-                print("[TCP] Сервер закрыл соединение без ответа")
+        # Получаем ответ (таймаут 5 сек)
+        sock.settimeout(5.0)
+        response = sock.recv(1024)
+        if response:
+            print(f"[TCP] Ответ: {response.decode('utf-8', errors='replace')}")
+        else:
+            print("[TCP] Сервер закрыл соединение без ответа")
+
+        return sock  # Возвращаем сокет для дальнейших вызовов
+
+
     except Exception as e:
         print(f"[TCP] Ошибка: {e}")
+        if sock:
+            sock.close()
+        return None
+'''
+#
+#
+'''def tcp_client(host, port, message, sock=None):
+    try:
+        if sock is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, port))
+            print(f"[TCP] Подключено к {host}:{port}")
+
+        # Отправляем сообщение
+        data = (message + "\r\n").encode('utf-8')
+        sock.sendall(data)
+        print(f"[TCP] Отправлено: {message}")
+
+        # Читаем ответ до первой новой строки (\r\n или \n)
+        response_buffer = ""
+        while True:
+            chunk = sock.recv(1).decode('utf-8', errors='replace')
+            if not chunk:  # Сервер закрыл соединение
+                break
+            response_buffer += chunk
+            # Проверяем, закончился ли ответ
+            if response_buffer.endswith("\r\n") or response_buffer.endswith("\n"):
+                break
+
+        if response_buffer:
+            print(f"[TCP] Ответ: {response_buffer.rstrip()}")
+        else:
+            print("[TCP] Сервер закрыл соединение без ответа")
+
+        return sock
+
+    except Exception as e:
+        print(f"[TCP] Ошибка: {e}")
+        if sock:
+            sock.close()
+        return None
+'''
+
+def tcp_client(host, port, message, sock=None):
+    try:
+        if sock is None:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, port))
+            print(f"[TCP] Подключено к {host}:{port}")
+
+        data = (message + "\r\n").encode('utf-8')
+        sock.sendall(data)
+        print(f"[TCP] Отправлено: {message}")
+
+        # Читаем ответ до \r\n или \n
+        response_buffer = ""
+        while True:
+            chunk = sock.recv(1).decode('utf-8', errors='replace')
+            if not chunk:
+                break
+            response_buffer += chunk
+            if response_buffer.endswith("\r\n") or response_buffer.endswith("\n"):
+                break
+
+        if response_buffer:
+            print(f"[TCP] Ответ: {response_buffer.rstrip()}")
+        else:
+            print("[TCP] Сервер закрыл соединение без ответа")
+
+        return sock
+
+    except Exception as e:
+        print(f"[TCP] Ошибка: {e}")
+        if sock:
+            sock.close()
+        return None
 
 
 def udp_client(host, port, message):
@@ -29,6 +116,7 @@ def udp_client(host, port, message):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.bind(("0.0.0.0", 0))  # Любой свободный локальный порт
             sock.settimeout(5.0)
+
 
             data = message.encode('utf-8')
             sock.sendto(data, (host, port))
@@ -42,23 +130,16 @@ def udp_client(host, port, message):
     except Exception as e:
         print(f"[UDP] Ошибка: {e}")
 
+
 def main():
     print("=== TEST-Drive TCP/UDP-Server ===\n")
 
-    ###########################################################
-    ###   !!! ПРОБРОСЬ ПОРТ НА РОУТЕРЕ ДЛЯ ВНЕШНЕГО IP !!!  ###
-    ###########################################################
-
-    # 1. IP и порт у юзера (127.0.0.1) 
-    # 192.168.56.1 - local;
-    # 37.122.97.89 - это мой внешний; 
-    # 37.122.97.89
-    # 192.168.3.240 - ubuntu.
 
     # 1. Ввод IP сервера
     server_ip = input("IP сервера (по умолчанию 127.0.0.1): ").strip()
     if not server_ip:
         server_ip = "127.0.0.1"
+
 
     # 2. Выбор протокола
     print("\nВыберите протокол:")
@@ -66,13 +147,13 @@ def main():
     print("2 - UDP (порт по умолчанию 60000)")
     proto_choice = input("Ваш выбор (1 или 2, по умолчанию 1): ").strip()
 
-
     if proto_choice == "2":
         protocol = "UDP"
         default_port = 60000
     else:
         protocol = "TCP"
         default_port = 50000
+
 
     # 3. Ввод порта
     port_str = input(f"Порт сервера (по умолчанию {default_port}): ").strip()
@@ -91,44 +172,38 @@ def main():
     print(f"\nПодключение: {protocol} -> {server_ip}:{port}")
     print("Введите сообщение (или 'quit' для выхода):\n")
 
+
     # 4. Основной цикл общения
-    while True:
-        try:
+    sock = None  # Храним TCP-сокет между вызовами
+    try:
+        while True:
             message = input("> ").strip()
             if message.lower() == 'quit':
+                if sock:
+                    sock.close()
+                    print("[TCP] Соединение закрыто.")
                 break
 
             if not message:
                 continue  # Пропускаем пустые строки
 
-            # Отправка в зависимости от протокола
             if protocol == "TCP":
-                tcp_client(server_ip, port, message)
+                sock = tcp_client(server_ip, port, message, sock)
+                if sock is None:
+                    print("[TCP] Не удалось отправить сообщение. Проверьте соединение.")
             else:  # UDP
                 udp_client(server_ip, port, message)
 
-        except KeyboardInterrupt:
-            print("\nПрервано пользователем.")
-            break
-        except Exception as e:
-            print(f"Неожиданная ошибка: {e}")
+    except KeyboardInterrupt:
+        print("\nПрервано пользователем.")
+        if sock:
+            sock.close()
+    except Exception as e:
+        print(f"Неожиданная ошибка: {e}")
+        if sock:
+            sock.close()
 
     print("Клиент закрыт.")
 
 if __name__ == "__main__":
     main()
-
-
-# Как включить Telnet Client в Windows 10/11:
-#    powershell:
-#    Add-WindowsCapability -Online -Name TelnetClient~~~~0.0.1.0
-#        или
-#    dism /online /Enable-Feature /FeatureName:TelnetClient
-
-
-#################################
-#################################
- ###    telnet               ###
- ###    open localhost 50000 ###
-#################################
-#################################
