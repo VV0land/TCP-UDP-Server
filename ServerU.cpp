@@ -239,9 +239,9 @@ void acceptTcpConnection(int tcp_server) {
         return;
     }
 
-    // Отправляем приветствие
-    const char* welcome = "Server ready. Type your message:\r\n";
-    send(client_fd, welcome, strlen(welcome), 0);
+    // Отправляем приветствие - youe bunny wrote!!!)))
+   /// const char* welcome = "Server ready. Type your message:\r\n";
+   /// send(client_fd, welcome, strlen(welcome), 0);
 }
 
 
