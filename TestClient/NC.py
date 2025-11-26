@@ -1,4 +1,5 @@
-﻿import socket
+﻿# 29.11.25 Добавлен ping и возможность ввода IP с 192.168.X.X
+import socket
 import subprocess
 import re
 import platform
