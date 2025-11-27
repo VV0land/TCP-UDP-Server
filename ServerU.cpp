@@ -1,4 +1,9 @@
 //26.11.2025
+//  27.11.2025 - Нужны еще:
+//      1.  Makefile
+//      2.  systemd unit для запуска
+//      3.  пакет для дистрибутива
+
 #include <iostream>
 #include <string>
 #include <vector>
