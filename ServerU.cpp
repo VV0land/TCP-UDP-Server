@@ -16,7 +16,7 @@
 #include <sys/epoll.h>
 #include <fcntl.h>
 #include <errno.h>
- 
+#include <algorithm> 
 using namespace std;
 
 const int BUFFER_SIZE = 1024;
@@ -167,7 +167,7 @@ string processCommand(const string& cmd) {
 
     else if (cmd == "/stats") {
         // Очищаем зависших TCP‑клиентов (если не сделано в основном цикле)
-        cleanupInactiveClients();
+        //cleanupInactiveClients();
 
         int active_tcp = clients.size();
         int active_udp = known_udp_clients.size();
@@ -269,14 +269,14 @@ void acceptTcpConnection(int tcp_server) {
     total_connections++;
 
     // Защита от переполнения
-    if (total_connections > 1000000) {  // порог можно настроить
-        total_connections = 1;  // сбрасываем (или логгируем предупреждение)
+    if (total_connections > 1000000) {  
+        total_connections = 1;  
     }
 
     clients.push_back({ client_fd, client_addr, "", time(nullptr) });  // last_activity = сейчас
 
 
-    // Отправляем приветствие - youe bunny wrote!!!)))
+    // Отправляем приветствие - your bunny wrote!!!))) - ЭТО ВСЕ МЕШАЕТ синхпонности!
    /// const char* welcome = "Server ready. Type your message:\r\n";
    /// send(client_fd, welcome, strlen(welcome), 0);
 }
@@ -393,16 +393,16 @@ void handleTcpClient(int client_fd) {
             while (true) {
                 pos = string::npos;
 
-                if ((pos = input_buffer.find("\r\n")) != string::npos) {
-                    string line = input_buffer.substr(0, pos);
-                    input_buffer.erase(0, pos + 2);
+                if ((pos = it->buffer.find("\r\n")) != string::npos) {
+                    string line = it->buffer.substr(0, pos);
+                    it->buffer.erase(0, pos + 2);
                     processCompleteLine(line, client_fd);
                     continue;
                 }
 
-                if ((pos = input_buffer.find('\n')) != string::npos) {
-                    string line = input_buffer.substr(0, pos);
-                    input_buffer.erase(0, pos + 1);
+                if ((pos = it->buffer.find('\n')) != string::npos) {
+                    string line = it->buffer.substr(0, pos);
+                    it->buffer.erase(0, pos + 1);
                     processCompleteLine(line, client_fd);
                     continue;
                 }
@@ -560,6 +560,32 @@ void handleUdpClient(int udp_fd) {
     }
 }
 
+
+// очистка зависших TCP‑клиентов
+void cleanupInactiveClients() {
+    const int INACTIVITY_TIMEOUT = 60;
+
+    for (auto it = clients.begin(); it != clients.end(); ) {
+        if (time(nullptr) - it->last_activity > INACTIVITY_TIMEOUT) {
+            cout << "Closing inactive client FD=" << it->fd
+                << " (IP: " << inet_ntoa(it->addr.sin_addr)
+                << ":" << ntohs(it->addr.sin_port) << ")" << endl;
+
+            // Удаляем из epoll
+            epoll_ctl(epoll_fd, EPOLL_CTL_DEL, it->fd, nullptr);
+
+            // Закрываем сокет
+            close(it->fd);
+
+            // Удаляем из списка клиентов
+            it = clients.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
+}
+
 int main() {
     // Создаём epoll
     epoll_fd = epoll_create1(0);
@@ -590,6 +616,9 @@ int main() {
 
     while (true) {
         //28.11.25
+        // РЕГУЛЯРНАЯ ОЧИСТКА (каждую секунду)
+        cleanupInactiveClients();
+
         // 1. Проверяем «зависших» TCP‑клиентов
         for (auto it = clients.begin(); it != clients.end(); ) {
             if (time(nullptr) - it->last_activity > 60) {  // 60 сек бездействия
