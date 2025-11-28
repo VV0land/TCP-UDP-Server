@@ -6,6 +6,11 @@
 //  git commit -m "Небольшие изменения серверной части + возможность вводить IP/port на клиенте"
 //  23.11.2025
 //  git commit -m "Добавлен ServerU.cpp - для ubuntu-25.10-live-server-amd64"
+// 
+//  27.11.2025 - Нужны еще:
+//      1.  Makefile
+//      2.  systemd unit для запуска
+//      3.  пакет для дистрибутива
 
 
 
@@ -322,8 +327,8 @@ int main() {
     }
 
     // !!! ПРОБРОСЬ ПОРТ НА РОУТЕРЕ ДЛЯ ВНЕШНЕГО IP !!!
-    SOCKET udp_server = createUdpServer(UDPort);  //  8081
-    SOCKET tcp_server = createTcpServer(TCPort);  //  8080
+    SOCKET udp_server = createUdpServer(UDPort);  //  60000
+    SOCKET tcp_server = createTcpServer(TCPort);  //  50000
 
     if (tcp_server == INVALID_SOCKET || udp_server == INVALID_SOCKET) {
         WSACleanup();
