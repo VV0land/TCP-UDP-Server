@@ -27,12 +27,17 @@ const int EPOLL_MAX_EVENTS = 64;
 const int TCP_PORT = 50000;
 const int UDP_PORT = 60000;
 
-int total_connections = 0;        // Общее число подключений за всё время
+int total_connections = 0;        // Общее число подключений ТСР
+
+//28.11.25
+int udp_connections = 0;  // Общее число UDP‑подключений
+set<pair<uint32_t, uint16_t>> known_udp_clients;  // Уникальные UDP‑клиенты
 
 struct ClientData {
     int fd;
     sockaddr_in addr;
-    //string buffer;  // Буфер для накопления данных  26.11.25
+    string buffer;  // Буфер дя накопления данных  26.11.25
+    time_t last_activity;  // Время последнего обмена данными 28.11.25
 };
 
 vector<ClientData> clients;
@@ -151,14 +156,29 @@ string processCommand(const string& cmd) {
         strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &timeinfo);
         return string(buffer) /*+ "\r\n"*/;
     }
-    else if (cmd == "/stats") {
+/*    else if (cmd == "/stats") {
         // Собираем статистику:
         // - total_connections: сколько клиентов подключалось за всё время
         // - active_clients: сколько сейчас онлайн (размер вектора clients)
         int active_clients = clients.size();
         return "Total connections: " + to_string(total_connections) +
-            ", Active clients: " + to_string(active_clients) /*+ "\r\n"*/;
+            ", Active clients: " + to_string(active_clients) /*+ "\r\n"* /;
+    }*/
+
+    else if (cmd == "/stats") {
+        // Очищаем зависших TCP‑клиентов (если не сделано в основном цикле)
+        cleanupInactiveClients();
+
+        int active_tcp = clients.size();
+        int active_udp = known_udp_clients.size();
+        int total = total_connections + udp_connections;
+
+        return "Total connections: " + to_string(total) +
+            "\nActive TCP: " + to_string(active_tcp) +
+            "\nActive UDP: " + to_string(active_udp);
     }
+
+
     else if (cmd == "/shutdown") {
         cout << "Shutdown command received. Server will terminate.\n";
         exit(0);
@@ -235,14 +255,26 @@ void acceptTcpConnection(int tcp_server) {
         return;
     }
 
-    cout << "New TCP connection from " << inet_ntoa(client_addr.sin_addr)
-        << ":" << ntohs(client_addr.sin_port) << endl;
+    cout << "New TCP connection from " << inet_ntoa(client_addr.sin_addr) << ":" << ntohs(client_addr.sin_port) << endl;
 
     // Добавляем клиентский fd в epoll
     if (!addToEpoll(epoll_fd, client_fd, EPOLLIN | EPOLLET)) {
         close(client_fd);
         return;
     }
+
+    //28.11.25
+
+    //clients.push_back({ client_fd, client_addr, "" });
+    total_connections++;
+
+    // Защита от переполнения
+    if (total_connections > 1000000) {  // порог можно настроить
+        total_connections = 1;  // сбрасываем (или логгируем предупреждение)
+    }
+
+    clients.push_back({ client_fd, client_addr, "", time(nullptr) });  // last_activity = сейчас
+
 
     // Отправляем приветствие - youe bunny wrote!!!)))
    /// const char* welcome = "Server ready. Type your message:\r\n";
@@ -327,7 +359,7 @@ void processCompleteLine(const string& line, int client_fd) {
 
 // Чтение данных от TCP‑клиента
 void handleTcpClient(int client_fd) {
-    char buffer[BUFFER_SIZE];
+    /*char buffer[BUFFER_SIZE];
     ssize_t bytes_read;
     string input_buffer;
 
@@ -336,6 +368,25 @@ void handleTcpClient(int client_fd) {
 
         if (bytes_read > 0) {
             input_buffer.append(buffer, bytes_read);
+*/
+
+    //28.11.25
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes_read = recv(client_fd, buffer, BUFFER_SIZE, 0);
+
+    if (bytes_read > 0) {
+        // Находим клиента в списке
+        auto it = find_if(clients.begin(), clients.end(),
+            [client_fd](const ClientData& c) { return c.fd == client_fd; });
+        if (it == clients.end()) return;
+
+        // Обновляем время последнего активности
+        it->last_activity = time(nullptr);  // !!!!!!!!!!!!!!!!!!!!!
+
+        // Добавляем данные в буфер клиента
+        it->buffer.append(buffer, bytes_read);
+
+
 
             // Поиск полных строк (\r\n или \n)
             size_t pos;
@@ -355,8 +406,7 @@ void handleTcpClient(int client_fd) {
                     processCompleteLine(line, client_fd);
                     continue;
                 }
-
-                break; // Нет полных строк — ждём дальше
+                break;
             }
         }
         else if (bytes_read == 0) {
@@ -464,6 +514,13 @@ void handleUdpClient(int udp_fd) {
     ssize_t bytes_read = recvfrom(udp_fd, buffer, BUFFER_SIZE, 0,
                                 (sockaddr*)&client_addr, &client_len);
 
+    //28.11.25
+    auto client_id = make_pair(client_addr.sin_addr.s_addr, client_addr.sin_port);
+    if (known_udp_clients.find(client_id) == known_udp_clients.end()) {
+        known_udp_clients.insert(client_id);
+        udp_connections++;
+    }
+
     if (bytes_read > 0) {
         string msg(buffer, bytes_read);
 
@@ -532,6 +589,22 @@ int main() {
     epoll_event events[EPOLL_MAX_EVENTS];
 
     while (true) {
+        //28.11.25
+        // 1. Проверяем «зависших» TCP‑клиентов
+        for (auto it = clients.begin(); it != clients.end(); ) {
+            if (time(nullptr) - it->last_activity > 60) {  // 60 сек бездействия
+                cout << "Closing inactive client: " << it->fd << endl;
+                close(it->fd);
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, it->fd, nullptr);
+                it = clients.erase(it);  // erase() возвращает следующий итератор
+            }
+            else {
+                ++it;  // переходим к следующему
+            }
+        }
+
+        // 2. Ждём событий от epoll
+
         int nfds = epoll_wait(epoll_fd, events, EPOLL_MAX_EVENTS, -1);
 
         if (nfds == -1) {
