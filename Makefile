@@ -2,7 +2,7 @@
 CC = g++
 
 # Флаги компиляции (C++17, оптимизация, предупреждения)
-CFLAGS = -std=c++17 -O2 -Wall -Wextra
+CFLAGS = -std=c++20 -Os -Wall -Wextra -Wshadow
 
 
 # Имя исполняемого файла

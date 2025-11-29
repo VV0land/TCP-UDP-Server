@@ -162,7 +162,7 @@ string processCommand(const string& cmd) {
         // - active_clients: сколько сейчас онлайн (размер вектора clients)
         int active_clients = clients.size();
         return "Total connections: " + to_string(total_connections) +
-            ", Active clients: " + to_string(active_clients) /*+ "\r\n"* /;
+            ", Active clients: " + to_string(active_clients) *+ "\r\n"* ;
     }*/
 
     else if (cmd == "/stats") {
