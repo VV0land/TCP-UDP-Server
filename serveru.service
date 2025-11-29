@@ -1,0 +1,24 @@
+[Unit]
+Description=UDP/TCP Server (ServerU)
+After=network.target
+
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/serveru
+WorkingDirectory=/opt/serveru
+User=nobody
+Group=nogroup
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Ограничения безопасности (опционально)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadOnlyPaths=/
+
+[Install]
+WantedBy=multi-user.target

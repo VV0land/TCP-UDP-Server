@@ -1,80 +1,9 @@
 ﻿import socket
+import subprocess
+import re
+import platform
 
-'''def tcp_client(host, port, message, sock=None):
-    """
-    Отправка сообщения через TCP.
-    Если sock=None — создаёт новое соединение.
-    Иначе использует переданный сокет.
-    Возвращает сокет для повторного использования.
-    """
-    try:  
-        if sock is None:
-            # Создаём новый сокет и подключаемся
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, port))
-            print(f"[TCP] Подключено к {host}:{port}")
-
-        # Отправляем сообщение с CRLF
-        data = (message + "\r\n").encode('utf-8')
-        sock.sendall(data)
-        print(f"[TCP] Отправлено: {message}")
-
-        # Получаем ответ (таймаут 5 сек)
-        sock.settimeout(5.0)
-        response = sock.recv(1024)
-        if response:
-            print(f"[TCP] Ответ: {response.decode('utf-8', errors='replace')}")
-        else:
-            print("[TCP] Сервер закрыл соединение без ответа")
-
-        return sock  # Возвращаем сокет для дальнейших вызовов
-
-
-    except Exception as e:
-        print(f"[TCP] Ошибка: {e}")
-        if sock:
-            sock.close()
-        return None
-'''
-#
-#
-'''def tcp_client(host, port, message, sock=None):
-    try:
-        if sock is None:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, port))
-            print(f"[TCP] Подключено к {host}:{port}")
-
-        # Отправляем сообщение
-        data = (message + "\r\n").encode('utf-8')
-        sock.sendall(data)
-        print(f"[TCP] Отправлено: {message}")
-
-        # Читаем ответ до первой новой строки (\r\n или \n)
-        response_buffer = ""
-        while True:
-            chunk = sock.recv(1).decode('utf-8', errors='replace')
-            if not chunk:  # Сервер закрыл соединение
-                break
-            response_buffer += chunk
-            # Проверяем, закончился ли ответ
-            if response_buffer.endswith("\r\n") or response_buffer.endswith("\n"):
-                break
-
-        if response_buffer:
-            print(f"[TCP] Ответ: {response_buffer.rstrip()}")
-        else:
-            print("[TCP] Сервер закрыл соединение без ответа")
-
-        return sock
-
-    except Exception as e:
-        print(f"[TCP] Ошибка: {e}")
-        if sock:
-            sock.close()
-        return None
-'''
-
+# TCP-коннект
 def tcp_client(host, port, message, sock=None):
     try:
         if sock is None:
@@ -86,7 +15,7 @@ def tcp_client(host, port, message, sock=None):
         sock.sendall(data)
         print(f"[TCP] Отправлено: {message}")
 
-        # Читаем ответ до \r\n или \n
+        # Читаем ответ до \r\n или \n (до Enter Win/*NX)
         response_buffer = ""
         while True:
             chunk = sock.recv(1).decode('utf-8', errors='replace')
@@ -109,14 +38,12 @@ def tcp_client(host, port, message, sock=None):
             sock.close()
         return None
 
-
+# UDP-коннект
 def udp_client(host, port, message):
-    """Отправка сообщения через UDP"""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.bind(("0.0.0.0", 0))  # Любой свободный локальный порт
             sock.settimeout(5.0)
-
 
             data = message.encode('utf-8')
             sock.sendto(data, (host, port))
@@ -130,16 +57,78 @@ def udp_client(host, port, message):
     except Exception as e:
         print(f"[UDP] Ошибка: {e}")
 
+# Проверка IP x.x.x.x
+def is_valid_ip(ip):
+    pattern = re.compile(r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$')
+    match = pattern.match(ip)
+    if not match:
+        return False
+    for part in match.groups():
+        if int(part) > 255:
+            return False
+    return True
+
+# Ping  # Параметр qc (queryes count) под Windows и *NX
+def ping_host(ip):
+    qc = '-n' if platform.system().lower() == 'windows' else '-c'
+    
+    try:
+        result = subprocess.run(
+            ['ping', qc, '3', ip],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=3
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+    except Exception:
+        return False
+
 
 def main():
     print("=== TEST-Drive TCP/UDP-Server ===\n")
 
-
     # 1. Ввод IP сервера
-    server_ip = input("IP сервера (по умолчанию 127.0.0.1): ").strip()
+    """    server_ip = input("IP сервера (по умолчанию 127.0.0.1): ").strip()
     if not server_ip:
-        server_ip = "127.0.0.1"
+        server_ip = "127.0.0.1" """
 
+    while True:
+        print("Введите последние 2 числа IP (192.168.X.X)")
+        print("Enter для 127.0.0.1")
+    
+        user_input = input("192.168.").strip()
+    
+        if not user_input:
+            server_ip = "127.0.0.1"
+            print(f"Выбран IP по умолчанию: {server_ip}")
+        else:
+            # Проверка формат ввода (два числа через точку)
+            if re.match(r'^\d+\.\d+$', user_input):
+                parts = user_input.split('.')
+                if all(0 <= int(part) <= 255 for part in parts):
+                    server_ip = f"192.168.{parts[0]}.{parts[1]}"
+                else:
+                    print("Ошибка: числа должны быть в диапазоне 0–255.")
+                    continue
+            else:
+                print("Ошибка: введите два числа через точку.")
+                continue
+    
+        # Проверяем корректность собранного IP
+        if not is_valid_ip(server_ip):
+            print("Ошибка: некорректный IP-адрес.")
+            continue
+    
+        print(f"Пингую {server_ip}...")
+    
+        # Выполняем ping
+        if ping_host(server_ip):
+            print(f"IP {server_ip} доступен. Пинг-понг успешен.")
+            break  # Выходим из цикла, если ping прошёл
+        else:
+            print(f"Ошибка: IP {server_ip} недоступен.")
 
     # 2. Выбор протокола
     print("\nВыберите протокол:")
@@ -153,7 +142,6 @@ def main():
     else:
         protocol = "TCP"
         default_port = 50000
-
 
     # 3. Ввод порта
     port_str = input(f"Порт сервера (по умолчанию {default_port}): ").strip()
@@ -171,7 +159,6 @@ def main():
 
     print(f"\nПодключение: {protocol} -> {server_ip}:{port}")
     print("Введите сообщение (или 'quit' для выхода):\n")
-
 
     # 4. Основной цикл общения
     sock = None  # Храним TCP-сокет между вызовами
