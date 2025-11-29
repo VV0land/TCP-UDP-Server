@@ -174,8 +174,8 @@ string processCommand(const string& cmd) {
         int total = total_connections + udp_connections;
 
         return "Total connections: " + to_string(total) +
-            "\nActive TCP: " + to_string(active_tcp) +
-            "\nActive UDP: " + to_string(active_udp);
+            "\tActive TCP: " + to_string(active_tcp) +
+            "\tActive UDP: " + to_string(active_udp);
     }
 
 
