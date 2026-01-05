@@ -57,6 +57,13 @@
 			git remote -v								Проверь связь с удалённым репозиторием
 			
 			git pull origin master origin 				— имя удалённого репозитория;	master — ветка, которую нужно обновить
+			
+			###	НО ЛУЧШЕ ТАК, ПОШАГОВО, ПРОСМОТРЕТЬ ВДРУГ БЫЛ ЧЕЙ-ТО PUSH И/ИЛИ ТВОЙ С ДР. МЕСТА	###
+			git fetch
+			git log --oneline --graph --all  # Посмотреть все ветки
+			git status  # Теперь увидите, что ваша ветка отстаёт
+			git merge origin/master  # Или git rebase origin/master
+			
 			git status
 			
 	2.	Выгрузка на GitHub после изменений:
